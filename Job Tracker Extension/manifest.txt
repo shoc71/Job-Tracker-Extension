@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Job Tracker Extension",
+  "version": "1.1",
+  "description": "Tracks jobs and shows them in a side panel.",
+  "permissions": ["storage", "tabs", "sidePanel"],
+  "host_permissions": ["<all_urls>"],
+
+  "action": {
+    "default_panel" : "index.html",
+    "default_title" : "Open Job Tracker"
+  },
+
+  "background": {
+    "service_worker": "src/background.js"
+  },
+
+  "side_panel": {
+    "default_path" : "index.html"
+  },
+
+  "web_accessible_resources": [
+    {
+      "resources": ["index.html", "table.html"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+
+  "icons": {
+    "128": "icons/icon1.png"
+  }
+}

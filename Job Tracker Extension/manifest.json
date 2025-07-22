@@ -1,0 +1,20 @@
+{
+  "name": "Job Tracker Extension",
+  "description": "Tracks jobs and shows them in a side panel.",
+  "version": "1.0",
+  "manifest_version": 3,
+  "permissions": ["sidePanel", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_title": "Open Side Panel"
+  },
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "icons": {
+    "128": "icons/icon1.png"
+  }
+}
