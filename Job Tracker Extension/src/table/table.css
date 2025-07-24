@@ -1,17 +1,20 @@
 body {
   font-family: sans-serif;
   padding: 1rem;
+  transition: 0.5s ease;
 }
 
 table {
   border-collapse: collapse;
   width: 100%;
+  transition: 0.5s ease;
 }
 
 th, td {
   border: 1px solid #ccc;
   padding: 0.5rem;
   vertical-align: top;
+  transition: 0.5s ease;
 }
 
 th {
@@ -31,4 +34,56 @@ input.form-control, textarea.form-control {
 
 td .form-control {
   width: 100%;
+}
+
+/* darkmode */
+
+body.dark-mode {
+  background-color: #121212;
+  color: #f1f1f1;
+  transition: 0.5s ease;
+}
+
+body.dark-mode table {
+  background-color: #1f1f1f;
+  color: #f1f1f1;
+  border-color: #444;
+  transition: 0.5s ease;
+}
+
+body.dark-mode th {
+  background-color: #1111118c;
+  color: #ffffff;
+  transition: 0.5s ease;
+}
+
+body.dark-mode td {
+  background-color: #02020222;
+  color: #f1f1f1;
+}
+
+body.dark-mode .form-control {
+  background-color: #2a2a2a;
+  color: #f1f1f1;
+  border: 1px solid #555;
+}
+
+body.dark-mode .btn-outline-dark {
+  border-color: #ccc;
+  color: #ccc;
+}
+
+/* job description */
+
+.job-desc-preview {
+  transition: max-height 0.3s ease;
+}
+
+.job-desc-preview button.toggle-desc {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  background: none;
+  font-size: 0.8rem;
+  padding: 2px 5px;
 }

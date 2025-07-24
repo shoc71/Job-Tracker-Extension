@@ -6,11 +6,14 @@ function renderTable() {
 
         jobs.forEach((job, index) => {
             const applyDate = job.applyDate || "N/A";
+            const webLink = job.jobWebsite 
+                ? `<a href="${job.jobWebsite || "#"}" target="_blank">${job.jobTitle} ${job.companyName} (Job Link)</a>`
+                : 'No website provided'
             const resumeLink = job.resumeBase64
-                ? `<a href="${job.resumeBase64}" download="${job.companyName}_resume.pdf">Download Resume</a>`
+                ? `<a href="${job.resumeBase64}" download="${applyDate}_${job.jobTitle}_${job.companyName}_resume.pdf">${job.jobTitle} ${job.companyName} (Resume)</a>`
                 : "No resume";
             const coverLetterLink = job.coverLetterBase64
-                ? `<a href="${job.coverLetterBase64}" download="${job.companyName}_coverletter.pdf">Download Cover Letter</a>`
+                ? `<a href="${job.coverLetterBase64}" download="${applyDate}_${job.jobTitle}_${job.companyName}_coverletter.pdf">${job.jobTitle} ${job.companyName} (CV)</a>`
                 : "No cover letter";
 
             const row = document.createElement("tr");
@@ -19,8 +22,13 @@ function renderTable() {
                 <td class="editable" data-field="jobTitle">${job.jobTitle || ''}</td>
                 <td class="editable" data-field="companyName">${job.companyName || ''}</td>
                 <td class="editable" data-field="applyDate">${applyDate}</td>
-                <td class="editable" data-field="jobWebsite">${job.jobWebsite || ''}</td>
-                <td class="editable" data-field="jobDescription">${job.jobDescription || ''}</td>
+                <td class="editable" data-field="jobWebsite">${webLink}</td>
+                <td class="editable" data-field="jobDescription">
+                    <div class="job-desc-preview" style="max-height: 60px; overflow: hidden; position: relative;">
+                        <span>${job.jobDescription || ''}</span>
+                        <button class="btn btn-sm btn-link toggle-desc">Show More</button>
+                    </div>
+                </td>
                 <td>${resumeLink}</td>
                 <td>${coverLetterLink}</td>
                 <td class="editable" data-field="applied">${job.applied || ''}</td>
@@ -39,6 +47,20 @@ function renderTable() {
 }
 
 function attachButtonListeners(jobs) {
+    document.querySelectorAll(".toggle-desc").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const wrapper = btn.closest(".job-desc-preview");
+            wrapper.classList.toggle("expanded");
+
+            if (wrapper.classList.contains("expanded")) {
+                wrapper.style.maxHeight = "none";
+                btn.textContent = "Show Less";
+            } else {
+                wrapper.style.maxHeight = "60px";
+                btn.textContent = "Show More";
+            }
+        });
+    });
     document.querySelectorAll(".delete-btn").forEach((btn) => {
         btn.addEventListener("click", (e) => {
             const index = parseInt(e.target.dataset.index);
@@ -56,10 +78,27 @@ function attachButtonListeners(jobs) {
 
                 if (field === "jobDescription") {
                     cell.innerHTML = `<textarea class="form-control" rows="4">${value}</textarea>`;
+
+                } else if (field === "jobWebsite") {
+                    const href = cell.querySelector("a")?.getAttribute("href") || value;
+                    cell.innerHTML = `<input class="form-control" value="${href}">`;
+
                 } else {
                     cell.innerHTML = `<input class="form-control" value="${value}">`;
                 }
             });
+
+            // Replace resume and cover letter cells with file inputs
+            const resumeCell = row.children[6];
+            const coverLetterCell = row.children[7];
+
+            resumeCell.innerHTML = `
+                <input type="file" class="form-control form-control-sm resume-input" accept="application/pdf">
+            `;
+
+            coverLetterCell.innerHTML = `
+                <input type="file" class="form-control form-control-sm coverletter-input" accept="application/pdf">
+            `;
 
             btn.classList.add("d-none");
             row.querySelector(".save-btn").classList.remove("d-none");
@@ -72,6 +111,8 @@ function attachButtonListeners(jobs) {
             const row = btn.closest("tr");
 
             row.querySelectorAll(".editable").forEach(cell => {
+                const resumeInput = row.querySelector(".resume-input");
+                const coverInput = row.querySelector(".coverletter-input");
                 const field = cell.dataset.field;
                 const input = cell.querySelector("input, textarea");
 
@@ -79,9 +120,52 @@ function attachButtonListeners(jobs) {
                     const value = input.value.trim();
                     jobs[index][field] = value;
 
-                    // Reset cell content
-                    cell.textContent = value;
+                    
+                    if (field === "jobWebsite") {
+                        jobs[index][field] = value;
+                        const jobTitle = jobs[index].jobTitle || "Job Link";
+                        cell.innerHTML = `<a href="${value}" target="_blank">${jobTitle} (Job Link)</a>`;
+                    } else if (field === "jobDescription") {
+                        jobs[index][field] = value;
+                        cell.innerHTML = `
+                            <div class="job-desc-preview" style="max-height: 60px; overflow: hidden; position: relative;">
+                                <span>${value}</span>
+                                <button class="btn btn-sm btn-link toggle-desc">Show More</button>
+                            </div>`;
+                    } else {
+                        jobs[index][field] = value;
+                        cell.textContent = value;
+                    }
                 }
+
+                // Resume and Cover-Letter saving logic
+                const saveFile = (fileInput) => {
+                    return new Promise((resolve) => {
+                        if (fileInput && fileInput.files.length > 0) {
+                            const reader = new FileReader();
+                            reader.onload = function () {
+                                resolve(reader.result);
+                            };
+                            reader.readAsDataURL(fileInput.files[0]);
+                        } else {
+                            resolve(null);
+                        }
+                    });
+                };
+
+                Promise.all([
+                    saveFile(resumeInput),
+                    saveFile(coverInput)
+                ]).then(([resumeData, coverData]) => {
+                    if (resumeData) {
+                        jobs[index].resumeBase64 = resumeData;
+                    }
+                    if (coverData) {
+                        jobs[index].coverLetterBase64 = coverData;
+                    }
+
+                    chrome.storage.local.set({ jobEntries: jobs }, renderTable);
+                });
             });
 
             chrome.storage.local.set({ jobEntries: jobs }, () => {
@@ -121,5 +205,21 @@ function attachButtonListeners(jobs) {
         });
     });
 }
+
+// darkmode
+const toggleBtn = document.getElementById("darkModeToggle");
+
+    const body = document.body;
+
+    // Load initial theme
+    if (localStorage.getItem("theme") === "dark") {
+        body.classList.add("dark-mode");
+    }
+
+    toggleBtn.addEventListener("click", () => {
+        document.body.classList.toggle("dark-mode");
+        localStorage.setItem("theme", body.classList.contains("dark-mode") ? "dark" : "light");
+        toggleBtn.textContent = document.body.classList.contains("dark-mode") ? "☀️ Light Mode" : "🌙 Dark Mode";
+});
 
 document.addEventListener("DOMContentLoaded", renderTable);
