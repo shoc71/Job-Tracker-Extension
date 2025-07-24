@@ -6,6 +6,22 @@ const resumeInput = document.getElementById("resumeUpload");
 const coverLetterInput = document.getElementById("coverLetterUpload");
 
 document.addEventListener("DOMContentLoaded", () => {
+    const toggleBtn = document.getElementById("toggleDarkModeBtn");
+    const body = document.body;
+
+    // Load initial theme
+    if (localStorage.getItem("theme") === "dark") {
+        body.classList.add("dark-mode");
+    }
+
+    toggleBtn.addEventListener("click", () => {
+        body.classList.toggle("dark-mode");
+        localStorage.setItem("theme", body.classList.contains("dark-mode") ? "dark" : "light");
+    });
+});
+
+
+document.addEventListener("DOMContentLoaded", () => {
     chrome.storage.local.get("jobEntries", (data) => {
         const jobs = data.jobEntries || [];
         if (jobs.length > 0) {
