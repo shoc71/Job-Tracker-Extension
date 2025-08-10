@@ -1,0 +1,5 @@
+"scripts": {
+  "test:unit": "jest tests/unit",
+  "test:ui": "playwright test tests/ui",
+  "test": "npm run test:unit && npm run test:ui"
+}

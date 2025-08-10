@@ -1,0 +1,203 @@
+// Require dependencies if needed (none needed here)
+
+// ------------------ DOM Selectors ------------------
+function getElements() {
+    return {
+        jobTitleInput: document.getElementById("job-title"),
+        companyNameInput: document.getElementById("company-name"),
+        jobWebsiteInput: document.getElementById("job-weblink"),
+        jobDescriptionInput: document.getElementById("job-description"),
+        appliedSelect: document.getElementById("floatingSelect"),
+        resumeInput: document.getElementById("resumeUpload"),
+        coverLetterInput: document.getElementById("coverLetterUpload"),
+        submitBtn: document.getElementById("submitBtn"),
+        clearBtn: document.getElementById("clearBtn"),
+        downloadBtn: document.getElementById("downloadBtn"),
+        viewUnitsBtn: document.getElementById("viewUnitsBtn"),
+        toggleBtn: document.getElementById("toggleDarkModeBtn")
+    };
+}
+
+// ------------------ clearForm ------------------
+function clearForm(elements) {
+    elements.jobTitleInput.value = "";
+    elements.companyNameInput.value = "";
+    elements.jobWebsiteInput.value = "";
+    elements.jobDescriptionInput.value = "";
+    elements.appliedSelect.selectedIndex = 0;
+    elements.resumeInput.value = "";
+    elements.coverLetterInput.value = "";
+}
+
+// ------------------ fileValidation ------------------
+function fileValidation(input) {
+    const file = input.files[0];
+    const allowedExtensions = /\.(doc|docx|pdf)$/i;
+
+    if (!file) return;
+    if (!allowedExtensions.exec(file.name)) {
+        alert('Invalid file type. Allowed: DOC, DOCX, PDF');
+        input.value = "";
+    }
+}
+
+// ------------------ attachListeners ------------------
+function attachListeners(elements) {
+    // Dark mode
+    if (localStorage.getItem("theme") === "dark") {
+        document.body.classList.add("dark-mode");
+        elements.toggleBtn.textContent = "☀️ Light Mode";
+    }
+
+    elements.toggleBtn.addEventListener("click", () => {
+        document.body.classList.toggle("dark-mode");
+        localStorage.setItem("theme", document.body.classList.contains("dark-mode") ? "dark" : "light");
+        elements.toggleBtn.textContent = document.body.classList.contains("dark-mode") ? "☀️ Light Mode" : "🌙 Dark Mode";
+    });
+
+    // File validation
+    elements.resumeInput.addEventListener("change", () => fileValidation(elements.resumeInput));
+    elements.coverLetterInput.addEventListener("change", () => fileValidation(elements.coverLetterInput));
+
+    // Clear form
+    elements.clearBtn.addEventListener("click", () => clearForm(elements));
+
+    // View table
+    elements.viewUnitsBtn.addEventListener("click", () => {
+        chrome.tabs.create({ url: chrome.runtime.getURL("pages/table.html") });
+    });
+
+    // Submit job entry
+    elements.submitBtn.addEventListener("click", () => handleSubmit(elements));
+
+    // Download jobs
+    elements.downloadBtn.addEventListener("click", () => handleDownload());
+}
+
+// ------------------ getFormData ------------------
+function getFormData(elements) {
+    return {
+        jobTitle: elements.jobTitleInput.value,
+        companyName: elements.companyNameInput.value,
+        jobWebsite: elements.jobWebsiteInput.value,
+        jobDescription: elements.jobDescriptionInput.value,
+        applied: elements.appliedSelect.value,
+        applyDate: new Date().toLocaleString(),
+    };
+}
+
+// ------------------ handleSubmit ------------------
+function handleSubmit(elements) {
+    const formData = getFormData(elements);
+
+    if (!formData.jobTitle || !formData.companyName) {
+        alert("Please fill in Job Title and Company Name.");
+        return;
+    }
+
+    readFileAsBase64(elements.resumeInput, (resumeBase64) => {
+        readFileAsBase64(elements.coverLetterInput, (coverLetterBase64) => {
+            formData.resumeBase64 = resumeBase64 || null;
+            formData.coverLetterBase64 = coverLetterBase64 || null;
+
+            saveToStorage(formData);
+            alert("Job saved!");
+            clearForm(elements);
+        });
+    });
+}
+
+// ------------------ saveToStorage ------------------
+function saveToStorage(data) {
+    chrome.storage.local.get("jobEntries", (result) => {
+        const jobs = result.jobEntries || [];
+        jobs.push(data);
+        chrome.storage.local.set({ jobEntries: jobs }, () => {
+            console.log("Job saved to sync storage");
+        });
+    });
+}
+
+// ------------------ readFileAsBase64 ------------------
+function readFileAsBase64(input, callback) {
+    const file = input.files[0];
+    if (!file) return callback(null);
+
+    const reader = new FileReader();
+    reader.onload = () => callback(reader.result);
+    reader.onerror = () => {
+        console.error('Error reading file:', reader.error);
+        callback(null);
+    };
+
+    reader.readAsDataURL(file);
+}
+
+// ------------------ handleDownload ------------------
+function handleDownload() {
+    chrome.storage.local.get("jobEntries", (result) => {
+        const jobs = result.jobEntries || [];
+        if (jobs.length === 0) {
+            alert("No jobs saved yet!");
+            return;
+        }
+
+        const zip = new JSZip();
+        zip.file("jobs.json", JSON.stringify(jobs, null, 2));
+
+        jobs.forEach((job) => {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+            const folderName = `${job.companyName || "Company"}_${timestamp}`;
+            const folder = zip.folder(folderName);
+
+            const csv = `Job Title,Company Name,Job Description,Job Website,Applied?,Apply Date\n"${job.jobTitle}","${job.companyName}","${job.jobDescription.replace(/"/g, '""')}","${job.jobWebsite}","${job.applied}","${job.applyDate}"`;
+            folder.file("job.csv", csv);
+
+            if (job.resumeBase64) {
+                const base64 = job.resumeBase64.split(",")[1];
+                folder.file("resume.pdf", base64, { base64: true });
+            }
+            if (job.coverLetterBase64) {
+                const base64 = job.coverLetterBase64.split(",")[1];
+                folder.file("cover_letter.pdf", base64, { base64: true });
+            }
+        });
+
+        zip.generateAsync({ type: "blob" }).then(content => {
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(content);
+            a.download = "job_data.zip";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        });
+    });
+}
+
+// ------------------ DOMContentLoaded ------------------
+document.addEventListener("DOMContentLoaded", () => {
+    const elements = getElements();
+    attachListeners(elements);
+
+    // Load last job if exists
+    chrome.storage.local.get("jobEntries", (data) => {
+        const jobs = data.jobEntries || [];
+        if (jobs.length > 0) {
+            const last = jobs[jobs.length - 1];
+            elements.jobTitleInput.value = last.jobTitle || "";
+            elements.companyNameInput.value = last.companyName || "";
+            elements.jobWebsiteInput.value = last.jobWebsite || "";
+            elements.jobDescriptionInput.value = last.jobDescription || "";
+            elements.appliedSelect.value = last.applied || "";
+        }
+    });
+});
+
+// Export for testing
+module.exports = {
+    clearForm,
+    getElements,
+    attachListeners,
+    handleSubmit,
+    fileValidation
+};

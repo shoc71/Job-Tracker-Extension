@@ -10,3 +10,9 @@
 - Locate the Extension and select the Folder (Job Tracker Extension)
 - Click your extension icon
 - The side panel should slide in from the right with index.html
+
+## Running Test Cases
+bash terminal> ```npm i```
+bash terminal> ```npx playwright install``` (if not installed already, check package.json)
+bash terminal> ```npx jest```
+bash terminal> ```npx playwright test```

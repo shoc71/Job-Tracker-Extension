@@ -1,0 +1,25 @@
+{
+  "name": "job_app",
+  "version": "1.0.0",
+  "description": "- On GitHub, Locate ```<> Code ↓``` button and click it\r - Click on Download ZIP",
+  "main": "jest.config.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test:unit": "jest",
+    "test:ui": "playwright test",
+    "test": "jest && playwright test"
+  },
+  "keywords": [],
+  "author": "",
+  "type": "module",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.54.1",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.0.0",
+    "jest": "^30.0.5",
+    "jest-environment-jsdom": "^30.0.5"
+  }
+}
